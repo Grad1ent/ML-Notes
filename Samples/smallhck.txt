@@ -1,0 +1,28 @@
+connect --target 192.168.1.101 --port 22
+Connection established. Authentication required.
+
+auth --user admin --pass .
+Authentication successful. Welcome, admin.
+
+list --dir /home/admin
+- secrets.txt
+- backup.tar.gz
+- config.yaml
+
+read --file secrets.txt
+Access denied. File is protected.
+
+override --policy read_protected_files
+Override request logged. Proceeding with file access.
+
+read --file secrets.txt
+[secrets.txt]
+API_KEY=12345-ABCDE
+DB_PASS=supersecurepassword
+...
+
+upload --payload smallhack.sh --destination /tmp
+Upload complete.
+
+execute --script /tmp/smallhck.sh -cred ./secrets.txt
+Execution started. System integrity compromised.
