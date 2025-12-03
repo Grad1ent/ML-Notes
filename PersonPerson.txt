@@ -1,0 +1,48 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.types import (
+    StructType, StructField,
+    IntegerType, StringType, BooleanType, TimestampType
+)
+
+spark = SparkSession.builder.getOrCreate()
+
+# ---- configuration: set catalog/schema/table names ----
+catalog_name = "adventureworks"
+schema_name = "person"
+table_name = "person"   # final full name will be adventureworks.person.person
+
+full_table_name = f"{catalog_name}.{schema_name}.{table_name}"
+
+# ---- (optional) ensure catalog & schema exist ----
+spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog_name}")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog_name}.{schema_name}")
+
+# ---- define schema consistent with AdventureWorks Person.Person ----
+person_schema = StructType([
+    StructField("BusinessEntityID", IntegerType(), False),
+    StructField("PersonType", StringType(), True),       # nchar(2) -> String
+    StructField("NameStyle", BooleanType(), True),       # bit -> Boolean
+    StructField("Title", StringType(), True),            # nvarchar(8)
+    StructField("FirstName", StringType(), False),       # nvarchar(50)
+    StructField("MiddleName", StringType(), True),       # nvarchar(50)
+    StructField("LastName", StringType(), False),        # nvarchar(50)
+    StructField("Suffix", StringType(), True),           # nvarchar(10)
+    StructField("EmailPromotion", IntegerType(), True),  # int
+    # XML columns stored as strings (can be parsed later)
+    StructField("AdditionalContactInfo", StringType(), True),
+    StructField("Demographics", StringType(), True),
+    # uniqueidentifier -> String (UUID text)
+    StructField("rowguid", StringType(), False),
+    StructField("ModifiedDate", TimestampType(), False)  # datetime -> timestamp
+])
+
+
+# ---- create empty DataFrame and save as Delta table with full catalog.schema.table ----
+empty_df = spark.createDataFrame([], person_schema)
+
+# ---- saveAsTable (managed Delta under Unity Catalog)
+empty_df.write.format("delta").mode("overwrite").saveAsTable(full_table_name)
+
+# ---- verify ----
+spark.sql(f"DESCRIBE EXTENDED {full_table_name}").show(truncate=False)
+spark.sql(f"SELECT * FROM {full_table_name} LIMIT 5").show()
